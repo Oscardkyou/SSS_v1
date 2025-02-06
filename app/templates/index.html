@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Генерация ссылки для онбординга</h2>
+        <div class="card">
+            <div class="card-body">
+                <form id="generateLinkForm">
+                    <div class="mb-3">
+                        <label for="parentFirstName" class="form-label">Имя родителя</label>
+                        <input type="text" class="form-control" id="parentFirstName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="parentLastName" class="form-label">Фамилия родителя</label>
+                        <input type="text" class="form-control" id="parentLastName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="childFirstName" class="form-label">Имя ребёнка</label>
+                        <input type="text" class="form-control" id="childFirstName" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Сгенерировать ссылку</button>
+                </form>
+                
+                <div id="result" class="mt-4" style="display: none;">
+                    <h5>Ссылка для онбординга:</h5>
+                    <div class="input-group">
+                        <input type="text" id="linkInput" class="form-control" readonly>
+                        <button class="btn btn-outline-secondary" type="button" id="copyButton">
+                            Копировать
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('generateLinkForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const data = {
+        parent_first_name: document.getElementById('parentFirstName').value,
+        parent_last_name: document.getElementById('parentLastName').value,
+        child_first_name: document.getElementById('childFirstName').value
+    };
+    
+    try {
+        const response = await fetch('/api/generate_link', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            document.getElementById('linkInput').value = result.onboarding_url;
+            document.getElementById('result').style.display = 'block';
+        } else {
+            alert(result.error || 'Произошла ошибка при генерации ссылки');
+        }
+    } catch (err) {
+        console.error('Ошибка:', err);
+        alert('Произошла ошибка при генерации ссылки');
+    }
+});
+
+document.getElementById('copyButton').addEventListener('click', () => {
+    const linkInput = document.getElementById('linkInput');
+    linkInput.select();
+    document.execCommand('copy');
+    alert('Ссылка скопирована в буфер обмена');
+});
+</script>
+{% endblock %}

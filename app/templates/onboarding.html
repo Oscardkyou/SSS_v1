@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">Онбординг родителя</h2>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Информация</h5>
+                <p><strong>Родитель:</strong> {{ parent.first_name }} {{ parent.last_name }}</p>
+                <p><strong>Ребёнок:</strong> {{ parent.children[0].first_name }}</p>
+                
+                <div class="mb-3">
+                    <h5>Загрузка фотографии</h5>
+                    <div class="camera-container">
+                        <video id="video" autoplay playsinline></video>
+                        <canvas id="canvas"></canvas>
+                        <div class="preview-container">
+                            <img id="preview" style="display: none;">
+                        </div>
+                        <div class="mt-3 d-flex justify-content-center gap-2">
+                            <button id="startCamera" class="btn btn-primary">Включить камеру</button>
+                            <button id="takePhoto" class="btn btn-success" disabled>Сделать фото</button>
+                            <button id="retakePhoto" class="btn btn-warning" style="display: none;">Переснять</button>
+                            <input type="file" id="fileInput" class="form-control" accept="image/*" style="display: none;">
+                            <button id="uploadFile" class="btn btn-secondary">Загрузить файл</button>
+                        </div>
+                        <button id="submit" class="btn btn-primary mt-3 w-100" style="display: none;">Отправить фото</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let stream = null;
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const preview = document.getElementById('preview');
+const startButton = document.getElementById('startCamera');
+const takePhotoButton = document.getElementById('takePhoto');
+const retakeButton = document.getElementById('retakePhoto');
+const submitButton = document.getElementById('submit');
+const fileInput = document.getElementById('fileInput');
+const uploadFileButton = document.getElementById('uploadFile');
+
+let photoBlob = null;
+
+startButton.addEventListener('click', async () => {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        startButton.disabled = true;
+        takePhotoButton.disabled = false;
+    } catch (err) {
+        console.error('Ошибка доступа к камере:', err);
+        alert('Не удалось получить доступ к камере');
+    }
+});
+
+takePhotoButton.addEventListener('click', () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    
+    canvas.toBlob(blob => {
+        photoBlob = blob;
+        preview.src = URL.createObjectURL(blob);
+        preview.style.display = 'block';
+        video.style.display = 'none';
+        takePhotoButton.style.display = 'none';
+        retakeButton.style.display = 'inline-block';
+        submitButton.style.display = 'block';
+    }, 'image/jpeg');
+});
+
+retakeButton.addEventListener('click', () => {
+    preview.style.display = 'none';
+    video.style.display = 'block';
+    takePhotoButton.style.display = 'inline-block';
+    retakeButton.style.display = 'none';
+    submitButton.style.display = 'none';
+    photoBlob = null;
+});
+
+uploadFileButton.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        photoBlob = file;
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        video.style.display = 'none';
+        takePhotoButton.style.display = 'none';
+        retakeButton.style.display = 'inline-block';
+        submitButton.style.display = 'block';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
+    }
+});
+
+submitButton.addEventListener('click', async () => {
+    if (!photoBlob) {
+        alert('Пожалуйста, сделайте фото или загрузите файл');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('photo', photoBlob);
+    formData.append('parent_id', '{{ parent.id }}');
+
+    try {
+        const response = await fetch('/api/upload_photo', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Фото успешно загружено!');
+            window.location.href = '/';
+        } else {
+            alert(result.error || 'Произошла ошибка при загрузке фото');
+        }
+    } catch (err) {
+        console.error('Ошибка загрузки:', err);
+        alert('Произошла ошибка при загрузке фото');
+    }
+});
+</script>
+{% endblock %}
