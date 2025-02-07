@@ -8,6 +8,11 @@ from flask_caching import Cache
 from functools import wraps
 import io
 import time
+import logging
+from sqlalchemy.exc import SQLAlchemyError
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 cache = Cache()
 
@@ -22,14 +27,14 @@ def optimize_image(image_file):
     img = Image.open(image_file)
     if img.mode in ('RGBA', 'P'):
         img = img.convert('RGB')
-    
+
     # Resize if too large
     max_size = 1024
     if max(img.size) > max_size:
         ratio = max_size / max(img.size)
         new_size = tuple(int(dim * ratio) for dim in img.size)
         img = img.resize(new_size, Image.LANCZOS)
-    
+
     # Save with optimization
     output = io.BytesIO()
     img.save(output, format='JPEG', optimize=True, quality=85)
@@ -41,7 +46,7 @@ def api_documentation(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         return f(*args, **kwargs)
-    
+
     # Add API documentation
     if not hasattr(f, 'api_doc'):
         f.api_doc = {
@@ -69,12 +74,12 @@ def onboarding(unique_id):
 def generate_link():
     """
     Generate onboarding link for parent and child.
-    
+
     Parameters:
         - parent_first_name (str): First name of parent
         - parent_last_name (str): Last name of parent
         - child_first_name (str): First name of child
-        
+
     Returns:
         - success (bool): Operation status
         - onboarding_url (str): Generated onboarding URL
@@ -91,7 +96,7 @@ def generate_link():
         first_name=data['child_first_name'],
         parent=parent
     )
-    
+
     db.session.add(parent)
     db.session.add(child)
     db.session.commit()
@@ -107,60 +112,61 @@ def generate_link():
 def upload_photo():
     """
     Upload and process photo for parent.
-    
+
     Parameters:
         - photo (file): Photo file (jpg, png, jpeg)
         - parent_id (str): Parent identifier
-        
+
     Returns:
         - success (bool): Operation status
         - message (str): Status message
     """
-    print("Received upload request")
-    print("Files:", request.files)
-    print("Form data:", request.form)
-    
+    logger.info("Received upload request")
+    logger.info("Files:", request.files)
+    logger.info("Form data:", request.form)
+
     if 'photo' not in request.files:
         return jsonify({'error': 'Нет файла фотографии'}), 400
-    
+
     photo = request.files['photo']
     parent_id = request.form.get('parent_id')
-    
-    print(f"Photo filename: {photo.filename}")
-    print(f"Parent ID: {parent_id}")
-    
+
+    logger.info(f"Photo filename: {photo.filename}")
+    logger.info(f"Parent ID: {parent_id}")
+
     if not photo or not parent_id:
         return jsonify({'error': 'Неверные данные'}), 400
 
     try:
         parent = Parent.query.get_or_404(parent_id)
-        
+
         if photo and allowed_file(photo.filename):
             # Create upload folder if it doesn't exist
             os.makedirs(current_app.config['UPLOAD_FOLDER'], exist_ok=True)
-            
+
             # Optimize image
             optimized_photo = optimize_image(photo)
-            
+
             filename = secure_filename(f"{parent.unique_id}_{photo.filename}")
             photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-            
-            print(f"Saving to path: {photo_path}")
-            
+
+            logger.info(f"Saving to path: {photo_path}")
+
             # Save optimized image
             with open(photo_path, 'wb') as f:
                 f.write(optimized_photo.getvalue())
-            
+
             parent.photo_path = filename
             db.session.commit()
-            
+
             return jsonify({
                 'success': True,
                 'message': 'Фото успешно загружено'
             })
-        
+
         return jsonify({'error': 'Недопустимый формат файла'}), 400
-        
+
     except Exception as e:
-        print(f"Error during upload: {str(e)}")
+        logger.error(f"Error during upload: {str(e)}")
         return jsonify({'error': f'Ошибка при загрузке: {str(e)}'}), 500
+
