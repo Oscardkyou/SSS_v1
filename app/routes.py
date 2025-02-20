@@ -101,7 +101,7 @@ def generate_link():
     db.session.add(child)
     db.session.commit()
 
-    onboarding_url = url_for('main.onboarding', unique_id=parent.unique_id, _external=True)
+    onboarding_url = url_for('main.onboarding', unique_id=parent.unique_id, _external=True, _scheme='https')
     return jsonify({
         'success': True,
         'onboarding_url': onboarding_url
@@ -169,4 +169,3 @@ def upload_photo():
     except Exception as e:
         logger.error(f"Error during upload: {str(e)}")
         return jsonify({'error': f'Ошибка при загрузке: {str(e)}'}), 500
-
