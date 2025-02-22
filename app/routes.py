@@ -71,10 +71,7 @@ def onboarding(unique_id):
 
 @bp.route('/register')
 def register():
-    # Generate a unique ID for the registration
-    registration_id = f"id_{str(uuid.uuid4())[:8]}"
-    # Redirect to the registration page with the ID
-    return render_template('onboarding.html', registration_id=registration_id)
+    return render_template('onboarding.html')
 
 @bp.route('/register/<registration_id>')
 def register_with_id(registration_id):

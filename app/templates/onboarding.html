@@ -3,31 +3,43 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h2 class="mb-4">Онбординг родителя</h2>
+        <h2 class="mb-4">Онбординг сотрудника</h2>
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Информация</h5>
-                <p><strong>Родитель:</strong> {{ parent.first_name }} {{ parent.last_name }}</p>
-                <p><strong>Ребёнок:</strong> {{ parent.children[0].first_name }}</p>
-                
-                <div class="mb-3">
-                    <h5>Загрузка фотографии</h5>
-                    <div class="camera-container">
-                        <video id="video" autoplay playsinline></video>
-                        <canvas id="canvas"></canvas>
-                        <div class="preview-container">
-                            <img id="preview" style="display: none;">
-                        </div>
-                        <div class="mt-3 d-flex justify-content-center gap-2">
-                            <button id="startCamera" class="btn btn-primary">Включить камеру</button>
-                            <button id="takePhoto" class="btn btn-success" disabled>Сделать фото</button>
-                            <button id="retakePhoto" class="btn btn-warning" style="display: none;">Переснять</button>
-                            <input type="file" id="fileInput" class="form-control" accept="image/*" style="display: none;">
-                            <button id="uploadFile" class="btn btn-secondary">Загрузить файл</button>
-                        </div>
-                        <button id="submit" class="btn btn-primary mt-3 w-100" style="display: none;">Отправить фото</button>
+                <h5 class="card-title">Регистрация</h5>
+                <form id="registrationForm">
+                    <div class="mb-3">
+                        <label for="firstName" class="form-label">Имя</label>
+                        <input type="text" class="form-control" id="firstName" required>
                     </div>
-                </div>
+                    <div class="mb-3">
+                        <label for="lastName" class="form-label">Фамилия</label>
+                        <input type="text" class="form-control" id="lastName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="position" class="form-label">Должность</label>
+                        <input type="text" class="form-control" id="position" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <h5>Загрузка фотографии</h5>
+                        <div class="camera-container">
+                            <video id="video" autoplay playsinline></video>
+                            <canvas id="canvas"></canvas>
+                            <div class="preview-container">
+                                <img id="preview" style="display: none;">
+                            </div>
+                            <div class="mt-3 d-flex justify-content-center gap-2">
+                                <button id="startCamera" class="btn btn-primary">Включить камеру</button>
+                                <button id="takePhoto" class="btn btn-success" disabled>Сделать фото</button>
+                                <button id="retakePhoto" class="btn btn-warning" style="display: none;">Переснять</button>
+                                <input type="file" id="fileInput" class="form-control" accept="image/*" style="display: none;">
+                                <button id="uploadFile" class="btn btn-secondary">Загрузить файл</button>
+                            </div>
+                            <button id="submit" class="btn btn-primary mt-3 w-100" style="display: none;">Отправить</button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -65,7 +77,7 @@ takePhotoButton.addEventListener('click', () => {
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     canvas.getContext('2d').drawImage(video, 0, 0);
-    
+
     canvas.toBlob(blob => {
         photoBlob = blob;
         preview.src = URL.createObjectURL(blob);
@@ -114,25 +126,27 @@ submitButton.addEventListener('click', async () => {
 
     const formData = new FormData();
     formData.append('photo', photoBlob);
-    formData.append('parent_id', '{{ parent.id }}');
+    formData.append('firstName', document.getElementById('firstName').value);
+    formData.append('lastName', document.getElementById('lastName').value);
+    formData.append('position', document.getElementById('position').value);
 
     try {
-        const response = await fetch('/api/upload_photo', {
+        const response = await fetch('/api/register_employee', {
             method: 'POST',
             body: formData
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            alert('Фото успешно загружено!');
+            alert('Сотрудник успешно зарегистрирован!');
             window.location.href = '/';
         } else {
-            alert(result.error || 'Произошла ошибка при загрузке фото');
+            alert(result.error || 'Произошла ошибка при регистрации сотрудника');
         }
     } catch (err) {
-        console.error('Ошибка загрузки:', err);
-        alert('Произошла ошибка при загрузке фото');
+        console.error('Ошибка регистрации:', err);
+        alert('Произошла ошибка при регистрации сотрудника');
     }
 });
 </script>
