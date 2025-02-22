@@ -69,6 +69,17 @@ def onboarding(unique_id):
     parent = Parent.query.filter_by(unique_id=unique_id).first_or_404()
     return render_template('onboarding.html', parent=parent)
 
+@bp.route('/register')
+def register():
+    # Generate a unique ID for the registration
+    registration_id = f"id_{str(uuid.uuid4())[:8]}"
+    # Redirect to the registration page with the ID
+    return render_template('onboarding.html', registration_id=registration_id)
+
+@bp.route('/register/<registration_id>')
+def register_with_id(registration_id):
+    return render_template('onboarding.html', registration_id=registration_id)
+
 @bp.route('/api/generate_link', methods=['POST'])
 @api_documentation
 def generate_link():
