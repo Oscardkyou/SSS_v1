@@ -30,13 +30,13 @@
                                 <img id="preview" style="display: none;">
                             </div>
                             <div class="mt-3 d-flex justify-content-center gap-2">
-                                <button id="startCamera" class="btn btn-primary">Включить камеру</button>
-                                <button id="takePhoto" class="btn btn-success" disabled>Сделать фото</button>
-                                <button id="retakePhoto" class="btn btn-warning" style="display: none;">Переснять</button>
+                                <button type="button" id="startCamera" class="btn btn-primary">Включить камеру</button>
+                                <button type="button" id="takePhoto" class="btn btn-success" disabled>Сделать фото</button>
+                                <button type="button" id="retakePhoto" class="btn btn-warning" style="display: none;">Переснять</button>
                                 <input type="file" id="fileInput" class="form-control" accept="image/*" style="display: none;">
-                                <button id="uploadFile" class="btn btn-secondary">Загрузить файл</button>
+                                <button type="button" id="uploadFile" class="btn btn-secondary">Загрузить файл</button>
                             </div>
-                            <button id="submit" class="btn btn-primary mt-3 w-100" style="display: none;">Отправить</button>
+                            <button type="button" id="submit" class="btn btn-primary mt-3 w-100" style="display: none;">Отправить</button>
                         </div>
                     </div>
                 </form>
@@ -61,64 +61,36 @@ const uploadFileButton = document.getElementById('uploadFile');
 
 let photoBlob = null;
 
-startButton.addEventListener('click', async () => {
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        startButton.disabled = true;
-        takePhotoButton.disabled = false;
-    } catch (err) {
-        console.error('Ошибка доступа к камере:', err);
-        alert('Не удалось получить доступ к камере');
+document.getElementById('registrationForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+});
+
+startButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (stream) {
+        stopCamera();
+    } else {
+        await startCamera();
     }
 });
 
-takePhotoButton.addEventListener('click', () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-
-    canvas.toBlob(blob => {
-        photoBlob = blob;
-        preview.src = URL.createObjectURL(blob);
-        preview.style.display = 'block';
-        video.style.display = 'none';
-        takePhotoButton.style.display = 'none';
-        retakeButton.style.display = 'inline-block';
-        submitButton.style.display = 'block';
-    }, 'image/jpeg');
+takePhotoButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    takePhoto();
 });
 
-retakeButton.addEventListener('click', () => {
-    preview.style.display = 'none';
-    video.style.display = 'block';
-    takePhotoButton.style.display = 'inline-block';
-    retakeButton.style.display = 'none';
-    submitButton.style.display = 'none';
-    photoBlob = null;
+retakeButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    retakePhoto();
 });
 
-uploadFileButton.addEventListener('click', () => {
+uploadFileButton.addEventListener('click', (e) => {
+    e.preventDefault();
     fileInput.click();
 });
 
-fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        photoBlob = file;
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
-        video.style.display = 'none';
-        takePhotoButton.style.display = 'none';
-        retakeButton.style.display = 'inline-block';
-        submitButton.style.display = 'block';
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-    }
-});
-
-submitButton.addEventListener('click', async () => {
+submitButton.addEventListener('click', async (e) => {
+    e.preventDefault();
     if (!photoBlob) {
         alert('Пожалуйста, сделайте фото или загрузите файл');
         return;
@@ -137,16 +109,84 @@ submitButton.addEventListener('click', async () => {
         });
 
         const result = await response.json();
+        console.log('Response:', result);
 
         if (result.success) {
             alert('Сотрудник успешно зарегистрирован!');
-            window.location.href = '/';
+            // НЕ перезагружаем страницу
+            // window.location.href = '/';
         } else {
             alert(result.error || 'Произошла ошибка при регистрации сотрудника');
         }
     } catch (err) {
         console.error('Ошибка регистрации:', err);
         alert('Произошла ошибка при регистрации сотрудника');
+    }
+});
+
+async function startCamera() {
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        startButton.disabled = true;
+        takePhotoButton.disabled = false;
+    } catch (err) {
+        console.error('Ошибка доступа к камере:', err);
+        alert('Не удалось получить доступ к камеру');
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        startButton.disabled = false;
+        takePhotoButton.disabled = true;
+    }
+}
+
+function takePhoto() {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    canvas.toBlob(blob => {
+        photoBlob = blob;
+        preview.src = URL.createObjectURL(blob);
+        preview.style.display = 'block';
+        video.style.display = 'none';
+        takePhotoButton.style.display = 'none';
+        retakeButton.style.display = 'inline-block';
+        submitButton.style.display = 'block';
+    }, 'image/jpeg');
+}
+
+function retakePhoto() {
+    preview.style.display = 'none';
+    video.style.display = 'block';
+    takePhotoButton.style.display = 'inline-block';
+    retakeButton.style.display = 'none';
+    submitButton.style.display = 'none';
+    photoBlob = null;
+}
+
+uploadFileButton.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        photoBlob = file;
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+        video.style.display = 'none';
+        takePhotoButton.style.display = 'none';
+        retakeButton.style.display = 'inline-block';
+        submitButton.style.display = 'block';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+        }
     }
 });
 </script>
