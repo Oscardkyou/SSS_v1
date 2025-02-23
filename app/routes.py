@@ -1,7 +1,7 @@
 import os
 from flask import Blueprint, jsonify, request, render_template, current_app, url_for
 from werkzeug.utils import secure_filename
-from .models import db, Parent, Child
+from .models import db, Parent, Child, Employee
 import uuid
 from PIL import Image
 from flask_caching import Cache
@@ -177,3 +177,50 @@ def upload_photo():
     except Exception as e:
         logger.error(f"Error during upload: {str(e)}")
         return jsonify({'error': f'Ошибка при загрузке: {str(e)}'}), 500
+
+@bp.route('/api/register_employee', methods=['POST'])
+def register_employee():
+    try:
+        if 'photo' not in request.files:
+            return jsonify({'success': False, 'error': 'Фото не загружено'}), 400
+
+        photo = request.files['photo']
+        first_name = request.form.get('firstName')
+        last_name = request.form.get('lastName')
+        position = request.form.get('position')
+        registration_id = f"id_{str(uuid.uuid4())[:8]}"
+
+        if not all([first_name, last_name, position]):
+            return jsonify({'success': False, 'error': 'Все поля обязательны для заполнения'}), 400
+
+        # Сохраняем фото
+        if photo:
+            filename = secure_filename(f"{registration_id}_{photo.filename}")
+            photo_path = os.path.join('uploads', filename)
+            full_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            photo.save(full_path)
+        else:
+            photo_path = None
+
+        # Создаем нового сотрудника
+        employee = Employee(
+            first_name=first_name,
+            last_name=last_name,
+            position=position,
+            photo_path=photo_path,
+            registration_id=registration_id
+        )
+
+        db.session.add(employee)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Сотрудник успешно зарегистрирован',
+            'registration_id': registration_id
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error registering employee: {str(e)}")
+        return jsonify({'success': False, 'error': 'Произошла ошибка при регистрации'}), 500
